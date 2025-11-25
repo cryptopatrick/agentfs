@@ -13,7 +13,13 @@
 ## Architecture
 
 ## Quick Start
-
+So, for a fully open-source, portable, and zero vendor lock-in alternative, just do:
+```rust
+use agentfs::AgentFS;
+let agent = Agent::new(model)
+    .with_filesystem(AgentFS::sqlite("my-agent.db").await?)
+    .build();
+```
 ## Documentation
 
 ## Examples

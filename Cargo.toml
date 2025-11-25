@@ -1,16 +1,16 @@
 [package]
 name = "agentfs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["CryptoPatrick <cryptopatrick@gmail.com>"]
 
 ###############################################################################
-description = ""Agent Tools""
+description = "Agent Persistence"
 documentation = "https://docs.rs/agentfs"
 homepage = "https://github.com/cryptopatrick/agentfs"
 repository = "https://github.com/cryptopatrick/agentfs"
 readme = "README.md"
-keywords = ["<KEYWORD1>", "<KEYWORD2>" ]
+keywords = ["AI", "Agent", "Persistence"]
 license = "MIT"
 autotests = false
 
@@ -25,3 +25,21 @@ path = "tests/test.rs"
 
 ###############################################################################
 [dependencies]
+
+###############################################################################
+[[example]]
+name = "rig_basic"
+required-features = ["rig"]
+
+[[example]]
+name = "rig_research_agent"
+required-features = ["rig"]
+
+
+###############################################################################
+[features]
+default = ["sqlite"]
+sqlite = ["agentsql/sqlite"]
+postgres = ["agentsql/postgres"]
+mysql = ["agentsql/mysql"]
+rig = ["async-trait", "tokio/rt-multi-thread", "tokio/macros"]
