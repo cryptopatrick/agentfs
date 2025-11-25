@@ -1,0 +1,27 @@
+[package]
+name = "agentfs"
+version = "0.1.0"
+edition = "2024"
+authors = ["CryptoPatrick <cryptopatrick@gmail.com>"]
+
+###############################################################################
+description = ""Agent Tools""
+documentation = "https://docs.rs/agentfs"
+homepage = "https://github.com/cryptopatrick/agentfs"
+repository = "https://github.com/cryptopatrick/agentfs"
+readme = "README.md"
+keywords = ["<KEYWORD1>", "<KEYWORD2>" ]
+license = "MIT"
+autotests = false
+
+###############################################################################
+[lib]
+name = "agentfs"
+path = "src/lib.rs"
+
+[[test]]
+name = "tests"
+path = "tests/test.rs"
+
+###############################################################################
+[dependencies]
