@@ -87,14 +87,16 @@ pub trait FileSystem: Send + Sync {
 }
 
 /// Database-backed filesystem implementation
+#[derive(Clone)]
 pub struct DbFileSystem {
     db: Arc<Box<dyn AgentDB>>,
+    mount_path: String,
 }
 
 impl DbFileSystem {
     /// Create a new database-backed filesystem
-    pub fn new(db: Arc<Box<dyn AgentDB>>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<Box<dyn AgentDB>>, mount_path: String) -> Self {
+        Self { db, mount_path }
     }
 
     /// Normalize a path
@@ -129,6 +131,58 @@ impl DbFileSystem {
         } else {
             format!("/{}", result.join("/"))
         }
+    }
+
+    /// Validate and normalize a path, ensuring it's within the mount point
+    ///
+    /// This enforces path sandboxing by:
+    /// 1. Treating all paths as relative to the mount point
+    /// 2. Normalizing the path (resolving . and ..)
+    /// 3. Ensuring no path traversal escapes the mount point
+    ///
+    /// # Security
+    ///
+    /// This prevents directory traversal attacks by ensuring all paths
+    /// are treated as relative to the mount point (e.g., /agent), even if
+    /// they start with /. Attempts to traverse outside the mount point
+    /// (e.g., /../../../etc/passwd) are prevented by normalization.
+    ///
+    /// # Path Interpretation
+    ///
+    /// All paths are treated as relative to the mount point:
+    /// - "/foo" -> internal path "/foo" (within mount point)
+    /// - "foo" -> internal path "/foo" (relative converted to absolute)
+    /// - "/agent/foo" -> internal path "/foo" (mount prefix stripped if present)
+    /// - "/../etc" -> internal path "/" (normalized, can't escape mount point)
+    ///
+    /// # Example
+    ///
+    /// With mount_path = "/agent":
+    /// - "/foo" -> Ok("/foo")
+    /// - "/agent/foo" -> Ok("/foo")
+    /// - "foo" -> Ok("/foo")
+    /// - "/../../../etc/passwd" -> Ok("/") (normalized, traversal prevented)
+    fn validate_and_normalize_path(&self, path: &str) -> Result<String> {
+        let mount_prefix = self.mount_path.trim_end_matches('/');
+
+        // Check if path explicitly includes the mount point prefix
+        let path_to_normalize = if path.starts_with(&format!("{}/", mount_prefix)) {
+            // Path explicitly includes mount point, strip it
+            &path[mount_prefix.len()..]
+        } else if path == mount_prefix {
+            // Path is exactly the mount point
+            "/"
+        } else {
+            // Treat path as relative to mount point (even if it starts with /)
+            path
+        };
+
+        // Normalize the path (this handles .. and . components)
+        let normalized = self.normalize_path(path_to_normalize);
+
+        // The normalized path is now the internal path, already secured
+        // by the normalization process which prevents escaping the root
+        Ok(normalized)
     }
 
     /// Split path into components
@@ -219,7 +273,7 @@ impl DbFileSystem {
 #[async_trait]
 impl FileSystem for DbFileSystem {
     async fn write_file(&self, path: &str, content: &[u8]) -> Result<()> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let components = self.split_path(&path);
 
         if components.is_empty() {
@@ -305,7 +359,7 @@ impl FileSystem for DbFileSystem {
 
     async fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         // Follow symlinks to get the final inode
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let mut current_path = path.clone();
         let max_symlink_depth = 40;
 
@@ -379,11 +433,13 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn exists(&self, path: &str) -> Result<bool> {
-        Ok(self.resolve_path(path).await?.is_some())
+        let path = self.validate_and_normalize_path(path)?;
+        Ok(self.resolve_path(&path).await?.is_some())
     }
 
     async fn readdir(&self, path: &str) -> Result<Option<Vec<String>>> {
-        let ino = match self.resolve_path(path).await? {
+        let path = self.validate_and_normalize_path(path)?;
+        let ino = match self.resolve_path(&path).await? {
             Some(ino) => ino,
             None => return Ok(None),
         };
@@ -406,7 +462,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn mkdir(&self, path: &str) -> Result<()> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let components = self.split_path(&path);
 
         if components.is_empty() {
@@ -466,7 +522,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn remove(&self, path: &str) -> Result<()> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let components = self.split_path(&path);
 
         if components.is_empty() {
@@ -541,7 +597,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn stat(&self, path: &str) -> Result<Option<Stats>> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
 
         // Follow symlinks with a maximum depth
         let mut current_path = path;
@@ -600,7 +656,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn lstat(&self, path: &str) -> Result<Option<Stats>> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let ino = match self.resolve_path(&path).await? {
             Some(ino) => ino,
             None => return Ok(None),
@@ -629,7 +685,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn symlink(&self, target: &str, linkpath: &str) -> Result<()> {
-        let linkpath = self.normalize_path(linkpath);
+        let linkpath = self.validate_and_normalize_path(linkpath)?;
         let components = self.split_path(&linkpath);
 
         if components.is_empty() {
@@ -700,7 +756,7 @@ impl FileSystem for DbFileSystem {
     }
 
     async fn readlink(&self, path: &str) -> Result<Option<String>> {
-        let path = self.normalize_path(path);
+        let path = self.validate_and_normalize_path(path)?;
         let ino = match self.resolve_path(&path).await? {
             Some(ino) => ino,
             None => return Ok(None),

@@ -40,6 +40,18 @@ uuid = { version = "1.0", features = ["v4"] }
 
 ###############################################################################
 [[example]]
+name = "basic"
+required-features = ["sqlite"]
+
+[[example]]
+name = "postgres"
+required-features = ["postgres"]
+
+[[example]]
+name = "mysql"
+required-features = ["mysql"]
+
+[[example]]
 name = "rig_basic"
 required-features = ["rig-integration"]
 
@@ -54,5 +66,6 @@ default = ["sqlite"]
 sqlite = ["agentsql", "agentsql/sqlite"]
 postgres = ["agentsql", "agentsql/postgres"]
 mysql = ["agentsql", "agentsql/mysql"]
-# TODO: Add rig-integration feature when Rig.rs crate is available
-# rig-integration = ["rig"]
+# Rig.rs integration (requires rig crate to be added as dependency)
+# Uncomment the rig dependency above to enable this feature
+rig-integration = []  # Placeholder feature for conditional compilation

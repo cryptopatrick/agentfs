@@ -28,14 +28,13 @@
 //!     // Store state
 //!     agent_fs.kv.set("session_id", b"12345").await?;
 //!
-//!     // Record a tool call
-//!     agent_fs.tools.record(
+//!     // Record a tool call (workflow-based API)
+//!     let id = agent_fs.tools.start(
 //!         "web_search",
-//!         serde_json::json!({"query": "Rust async"}),
-//!         Some(serde_json::json!({"results": []})),
-//!         chrono::Utc::now(),
-//!         Some(chrono::Utc::now()),
+//!         Some(serde_json::json!({"query": "Rust async"}))
 //!     ).await?;
+//!     // ... perform the search ...
+//!     agent_fs.tools.success(id, Some(serde_json::json!({"results": []}))).await?;
 //!
 //!     Ok(())
 //! }
@@ -46,10 +45,21 @@ pub mod filesystem;
 pub mod kvstore;
 pub mod tools;
 
+/// Rig.rs integration module
+///
+/// This module provides integration with the Rig.rs agent framework.
+/// See the module documentation for usage instructions.
+#[cfg(feature = "rig-integration")]
+pub mod rig_integration;
+
+/// Rig.rs integration documentation (available even when feature is disabled)
+#[cfg(not(feature = "rig-integration"))]
+pub mod rig_integration;
+
 pub use error::{AgentFsError, Result};
 pub use filesystem::{DbFileSystem, FileSystem, Stats};
 pub use kvstore::{DbKvStore, KvStore};
-pub use tools::{DbToolRecorder, ToolCall, ToolRecorder};
+pub use tools::{DbToolRecorder, ToolCall, ToolCallStats, ToolCallStatus, ToolRecorder};
 
 use agentdb::AgentDB;
 use std::path::PathBuf;
@@ -100,9 +110,9 @@ impl AgentFS {
         let db_arc = Arc::new(db);
 
         Ok(Self {
-            fs: DbFileSystem::new(db_arc.clone()),
+            fs: DbFileSystem::new(db_arc.clone(), mount_path.to_string_lossy().to_string()),
             kv: DbKvStore::new(db_arc.clone(), agent_id.clone()),
-            tools: DbToolRecorder::new(db_arc, agent_id.clone()),
+            tools: DbToolRecorder::new(db_arc),
             agent_id,
             mount_path,
         })
