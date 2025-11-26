@@ -1,11 +1,17 @@
 <h1 align="center">
   <br>
+    <img 
+      src="https://github.com/cryptopatrick/factory/blob/master/img/100days/agentfs.png" 
+      alt="Title" 
+      width="200"
+    />
+  <br>
   AGENTFS
   <br>
 </h1>
 
 <h4 align="center">
-  Filesystem Abstraction for AI Agents
+  AI Agent Memory Filesystem Abstraction
 </h4>
 
 <p align="center">
