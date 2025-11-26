@@ -25,8 +25,8 @@
     <img src="https://docs.rs/agentfs/badge.svg" alt="Documentation"/>
   </a>
   <a href="LICENSE" target="_blank">
-    <img src="https://img.shields.io/github/license/cryptopatrick/agentfs.svg" alt="License"/>
-  </a>
+      <img src="https://img.shields.io/github/license/sulu/sulu.svg" alt="GitHub license"/>
+    </a>
 </p>
 
 <b>Author's bio:</b> 👋😀 Hi, I'm CryptoPatrick! I'm currently enrolled as an
